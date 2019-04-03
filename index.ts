@@ -1,6 +1,7 @@
 import { spawn } from 'child_process'
 import * as fs from 'fs'
 import * as path from 'path'
+import * as promiseProbe from 'promise-probe'
 import * as rimraf from 'rimraf'
 
 import { GetPeaks } from './getPeaks'
@@ -43,27 +44,59 @@ export class AudioPeaks {
 	 */
   getPeaks(sourcePath: string, outputPath: string) {
     return new Promise((resolve, reject) => {
+      const that = this
       if (typeof sourcePath !== 'string') return reject(new Error('sourcePath param is not valid'))
 
       fs.access(sourcePath, (err) => {
         if (err) return reject(new Error(`File ${sourcePath} not found`))
 
-        this.sourceFilePath = sourcePath
-        this.extractPeaks((err, peaks) => {
-          if (err) return reject(err)
-          if (!outputPath) return resolve(peaks)
+        promiseProbe.ffprobe(sourcePath).then((probed) => {
 
-          let jsonPeaks
-          try {
-            jsonPeaks = JSON.stringify(peaks)
-          } catch (err) {
-            return reject(err)
+          if (!probed.audio) return resolve([])
+
+          function extract(p: string) {
+            that.sourceFilePath = p
+            that.extractPeaks((err, peaks) => {
+              if (err) return reject(err)
+              if (!outputPath) return resolve(peaks)
+              let jsonPeaks
+              try {
+                jsonPeaks = JSON.stringify(peaks)
+              } catch (err) {
+                return reject(err)
+              }
+              fs.writeFile(outputPath, jsonPeaks, (err) => {
+                if (err) return reject(err)
+                resolve(peaks)
+              })
+            })
           }
-          fs.writeFile(outputPath, jsonPeaks, (err) => {
-            if (err) return reject(err)
-            resolve(peaks)
-          })
+
+          if (probed.format.format_name !== 'ogg') {
+
+            const dateNow = new Date()
+
+            const oggFile = '/tmp/ff_' + dateNow + '.ogg'
+
+            const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+              stdio: 'ignore',
+              shell: true
+            })
+            ffmpegExtractAudio.on('exit', (code, signal) => {
+              if (code !== 0) return reject('convert to ogg failed')
+              extract(oggFile)
+            })
+            ffmpegExtractAudio.on('error', (code, signal) => {
+              reject(code)
+            })
+          } else {
+            extract(sourcePath)
+          }
+
+        }).catch((err) => {
+          reject(err)
         })
+
       })
     })
 

@@ -2,6 +2,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const child_process_1 = require("child_process");
 const fs = require("fs");
 const path = require("path");
+const promiseProbe = require("promise-probe");
 const rimraf = require("rimraf");
 const getPeaks_1 = require("./getPeaks");
 class AudioPeaks {
@@ -19,29 +20,57 @@ class AudioPeaks {
     }
     getPeaks(sourcePath, outputPath) {
         return new Promise((resolve, reject) => {
+            const that = this;
             if (typeof sourcePath !== 'string')
                 return reject(new Error('sourcePath param is not valid'));
             fs.access(sourcePath, (err) => {
                 if (err)
                     return reject(new Error(`File ${sourcePath} not found`));
-                this.sourceFilePath = sourcePath;
-                this.extractPeaks((err, peaks) => {
-                    if (err)
-                        return reject(err);
-                    if (!outputPath)
-                        return resolve(peaks);
-                    let jsonPeaks;
-                    try {
-                        jsonPeaks = JSON.stringify(peaks);
+                promiseProbe.ffprobe(sourcePath).then((probed) => {
+                    if (!probed.audio)
+                        return resolve([]);
+                    function extract(p) {
+                        that.sourceFilePath = p;
+                        that.extractPeaks((err, peaks) => {
+                            if (err)
+                                return reject(err);
+                            if (!outputPath)
+                                return resolve(peaks);
+                            let jsonPeaks;
+                            try {
+                                jsonPeaks = JSON.stringify(peaks);
+                            }
+                            catch (err) {
+                                return reject(err);
+                            }
+                            fs.writeFile(outputPath, jsonPeaks, (err) => {
+                                if (err)
+                                    return reject(err);
+                                resolve(peaks);
+                            });
+                        });
                     }
-                    catch (err) {
-                        return reject(err);
+                    if (probed.format.format_name !== 'ogg') {
+                        const dateNow = new Date();
+                        const oggFile = '/tmp/ff_' + dateNow + '.ogg';
+                        const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+                            stdio: 'ignore',
+                            shell: true
+                        });
+                        ffmpegExtractAudio.on('exit', (code, signal) => {
+                            if (code !== 0)
+                                return reject('convert to ogg failed');
+                            extract(oggFile);
+                        });
+                        ffmpegExtractAudio.on('error', (code, signal) => {
+                            reject(code);
+                        });
                     }
-                    fs.writeFile(outputPath, jsonPeaks, (err) => {
-                        if (err)
-                            return reject(err);
-                        resolve(peaks);
-                    });
+                    else {
+                        extract(sourcePath);
+                    }
+                }).catch((err) => {
+                    reject(err);
                 });
             });
         });

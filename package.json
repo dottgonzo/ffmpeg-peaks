@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/dottgonzo/ffmpeg-peaks#readme",
   "dependencies": {
+    "promise-probe": "^0.1.6",
     "rimraf": "^2.6.1"
   },
   "devDependencies": {
