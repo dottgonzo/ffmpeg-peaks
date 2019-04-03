@@ -73,7 +73,7 @@ export class AudioPeaks {
 	 * Extracts data peaks from an audio file using ffmpeg.
 	 * @param {Function} cb Callback fn
 	 */
-  extractPeaks(cb) {
+  extractPeaks(cb: (err: Error, result?: any) => void) {
     this.convertFile((err, rawfilepath) => {
       if (err) return cb(err)
 
