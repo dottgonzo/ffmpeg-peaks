@@ -1,6 +1,6 @@
 {
-  "name": "ffmpeg-peaks",
-  "version": "0.4.0",
+  "name": "ffmpeg-promise-peaks",
+  "version": "0.0.1",
   "description": "Extract peaks from an audio file.",
   "main": "index.js",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gfiorello/ffmpeg-peaks.git"
+    "url": "git+https://github.com/dottgonzo/ffmpeg-peaks.git"
   },
   "keywords": [
     "waveform",
@@ -23,9 +23,9 @@
   "author": "Gaetano Fiorello",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/gfiorello/ffmpeg-peaks/issues"
+    "url": "https://github.com/dottgonzo/ffmpeg-peaks/issues"
   },
-  "homepage": "https://github.com/gfiorello/ffmpeg-peaks#readme",
+  "homepage": "https://github.com/dottgonzo/ffmpeg-peaks#readme",
   "dependencies": {
     "rimraf": "^2.6.1"
   },
