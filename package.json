@@ -4,7 +4,12 @@
   "description": "Extract peaks from an audio file.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "watch-ts": "./node_modules/typescript/bin/tsc -w",
+    "build": "./node_modules/typescript/bin/tsc",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "repository": {
     "type": "git",
@@ -23,5 +28,11 @@
   "homepage": "https://github.com/gfiorello/ffmpeg-peaks#readme",
   "dependencies": {
     "rimraf": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^11.13.0",
+    "mocha": "^6.0.2",
+    "tslint": "^5.15.0",
+    "typescript": "^3.4.1"
   }
 }
