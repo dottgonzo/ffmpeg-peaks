@@ -23,6 +23,8 @@ class AudioPeaks {
             const that = this;
             if (typeof sourcePath !== 'string')
                 return reject(new Error('sourcePath param is not valid'));
+            const dateNow = new Date();
+            const oggFile = '/tmp/ff_' + dateNow + '.ogg';
             fs.access(sourcePath, (err) => {
                 if (err)
                     return reject(new Error(`File ${sourcePath} not found`));
@@ -44,15 +46,15 @@ class AudioPeaks {
                                 return reject(err);
                             }
                             fs.writeFile(outputPath, jsonPeaks, (err) => {
-                                if (err)
-                                    return reject(err);
-                                resolve(peaks);
+                                fs.unlink(oggFile, (err2) => {
+                                    if (err)
+                                        return reject(err);
+                                    resolve(peaks);
+                                });
                             });
                         });
                     }
                     if (probed.format.format_name !== 'ogg') {
-                        const dateNow = new Date();
-                        const oggFile = '/tmp/ff_' + dateNow + '.ogg';
                         const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
                             stdio: 'ignore',
                             shell: true
