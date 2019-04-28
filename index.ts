@@ -6,10 +6,11 @@ import * as rimraf from 'rimraf'
 
 import { GetPeaks } from './getPeaks'
 
-export class AudioPeaks {
-
-  oddByte: any
-  sc: number
+class AudioPeaks {
+  init: boolean = false
+  probe: promiseProbe.IFfprobe
+  oddByte = null
+  sc = 0
   opts: {
     numOfChannels: number
     sampleRate: number
@@ -20,19 +21,33 @@ export class AudioPeaks {
   }
   sourceFilePath: string
   peaks: GetPeaks
+  
+  constructor(probe?: promiseProbe.IFfprobe) {
+    if (probe) {
+      this.initWithProbe(probe)
+    }
+  }
 
-  constructor(opts) {
-    this.oddByte = null
-    this.sc = 0
-
-    this.opts = Object.assign({
-      numOfChannels: 2,
-      sampleRate: 44100,
+  initWithProbe(probe: promiseProbe.IFfprobe) {
+    this.probe = probe
+    this.opts = {
+      numOfChannels: this.probe.audio.channels,
+      sampleRate: parseInt(this.probe.audio.sample_rate),
       maxValue: 1.0,
       minValue: -1.0,
       width: 1640,
       precision: 1
-    }, opts || {})
+    }
+    this.init = true
+  }
+
+  async initializeByFile(sourcePath: string) {
+    try {
+      const probe = await promiseProbe.ffprobe(sourcePath)
+      this.initWithProbe(probe)
+    } catch (err) {
+      throw err
+    }
   }
 
   /*
@@ -53,51 +68,48 @@ export class AudioPeaks {
       fs.access(sourcePath, (err) => {
         if (err) return reject(new Error(`File ${sourcePath} not found`))
 
-        promiseProbe.ffprobe(sourcePath).then((probed) => {
 
-          if (!probed.audio) return resolve([])
+        if (!that.probe.audio) return resolve([])
 
-          function extract(p: string) {
-            that.sourceFilePath = p
-            that.extractPeaks((err, peaks) => {
-              if (err) return reject(err)
-              if (!outputPath) return resolve(peaks)
-              let jsonPeaks
-              try {
-                jsonPeaks = JSON.stringify(peaks)
-              } catch (err) {
-                return reject(err)
-              }
-              fs.writeFile(outputPath, jsonPeaks, (err) => {
-                fs.unlink(oggFile, (err2)=>{
-                  if (err) return reject(err)
-                  resolve(peaks)
-                })
-
+        function extract(p: string) {
+          that.sourceFilePath = p
+          that.extractPeaks((err, peaks) => {
+            if (err) return reject(err)
+            if (!outputPath) return resolve(peaks)
+            let jsonPeaks
+            try {
+              jsonPeaks = JSON.stringify(peaks)
+            } catch (err) {
+              return reject(err)
+            }
+            fs.writeFile(outputPath, jsonPeaks, (err) => {
+              fs.unlink(oggFile, (err2) => {
+                if (err) return reject(err)
+                resolve(peaks)
               })
-            })
-          }
 
-          if (probed.format.format_name !== 'ogg') {
+            })
+          })
+        }
 
-            const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
-              stdio: 'ignore',
-              shell: true
-            })
-            ffmpegExtractAudio.on('exit', (code, signal) => {
-              if (code !== 0) return reject('convert to ogg failed')
-              extract(oggFile)
-            })
-            ffmpegExtractAudio.on('error', (code, signal) => {
-              reject(code)
-            })
-          } else {
-            extract(sourcePath)
-          }
+        if (that.probe.format.format_name !== 'ogg') {
 
-        }).catch((err) => {
-          reject(err)
-        })
+          const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+            stdio: 'ignore',
+            shell: true
+          })
+          ffmpegExtractAudio.on('exit', (code, signal) => {
+            if (code !== 0) return reject('convert to ogg failed')
+            extract(oggFile)
+          })
+          ffmpegExtractAudio.on('error', (code, signal) => {
+            reject(code)
+          })
+        } else {
+          extract(sourcePath)
+        }
+
+
 
       })
     })
@@ -175,5 +187,20 @@ export class AudioPeaks {
         if (errorMsg) cb(new Error(errorMsg))
       })
     })
+  }
+}
+
+export async function getPeaks(sourcePath: string, outputPath: string, probe?: promiseProbe.IFfprobe) {
+  let ff: AudioPeaks
+  try {
+    if (probe) {
+      ff = new AudioPeaks(probe)
+    } else {
+      ff = new AudioPeaks()
+      await ff.initializeByFile(sourcePath)
+    }
+    return await ff.getPeaks(sourcePath, outputPath)
+  } catch (err) {
+    throw err
   }
 }

@@ -1,3 +1,11 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const child_process_1 = require("child_process");
 const fs = require("fs");
@@ -6,17 +14,36 @@ const promiseProbe = require("promise-probe");
 const rimraf = require("rimraf");
 const getPeaks_1 = require("./getPeaks");
 class AudioPeaks {
-    constructor(opts) {
+    constructor(probe) {
+        this.init = false;
         this.oddByte = null;
         this.sc = 0;
-        this.opts = Object.assign({
-            numOfChannels: 2,
-            sampleRate: 44100,
+        if (probe) {
+            this.initWithProbe(probe);
+        }
+    }
+    initWithProbe(probe) {
+        this.probe = probe;
+        this.opts = {
+            numOfChannels: this.probe.audio.channels,
+            sampleRate: parseInt(this.probe.audio.sample_rate),
             maxValue: 1.0,
             minValue: -1.0,
             width: 1640,
             precision: 1
-        }, opts || {});
+        };
+        this.init = true;
+    }
+    initializeByFile(sourcePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const probe = yield promiseProbe.ffprobe(sourcePath);
+                this.initWithProbe(probe);
+            }
+            catch (err) {
+                throw err;
+            }
+        });
     }
     getPeaks(sourcePath, outputPath) {
         return new Promise((resolve, reject) => {
@@ -28,52 +55,48 @@ class AudioPeaks {
             fs.access(sourcePath, (err) => {
                 if (err)
                     return reject(new Error(`File ${sourcePath} not found`));
-                promiseProbe.ffprobe(sourcePath).then((probed) => {
-                    if (!probed.audio)
-                        return resolve([]);
-                    function extract(p) {
-                        that.sourceFilePath = p;
-                        that.extractPeaks((err, peaks) => {
-                            if (err)
-                                return reject(err);
-                            if (!outputPath)
-                                return resolve(peaks);
-                            let jsonPeaks;
-                            try {
-                                jsonPeaks = JSON.stringify(peaks);
-                            }
-                            catch (err) {
-                                return reject(err);
-                            }
-                            fs.writeFile(outputPath, jsonPeaks, (err) => {
-                                fs.unlink(oggFile, (err2) => {
-                                    if (err)
-                                        return reject(err);
-                                    resolve(peaks);
-                                });
+                if (!that.probe.audio)
+                    return resolve([]);
+                function extract(p) {
+                    that.sourceFilePath = p;
+                    that.extractPeaks((err, peaks) => {
+                        if (err)
+                            return reject(err);
+                        if (!outputPath)
+                            return resolve(peaks);
+                        let jsonPeaks;
+                        try {
+                            jsonPeaks = JSON.stringify(peaks);
+                        }
+                        catch (err) {
+                            return reject(err);
+                        }
+                        fs.writeFile(outputPath, jsonPeaks, (err) => {
+                            fs.unlink(oggFile, (err2) => {
+                                if (err)
+                                    return reject(err);
+                                resolve(peaks);
                             });
                         });
-                    }
-                    if (probed.format.format_name !== 'ogg') {
-                        const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
-                            stdio: 'ignore',
-                            shell: true
-                        });
-                        ffmpegExtractAudio.on('exit', (code, signal) => {
-                            if (code !== 0)
-                                return reject('convert to ogg failed');
-                            extract(oggFile);
-                        });
-                        ffmpegExtractAudio.on('error', (code, signal) => {
-                            reject(code);
-                        });
-                    }
-                    else {
-                        extract(sourcePath);
-                    }
-                }).catch((err) => {
-                    reject(err);
-                });
+                    });
+                }
+                if (that.probe.format.format_name !== 'ogg') {
+                    const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+                        stdio: 'ignore',
+                        shell: true
+                    });
+                    ffmpegExtractAudio.on('exit', (code, signal) => {
+                        if (code !== 0)
+                            return reject('convert to ogg failed');
+                        extract(oggFile);
+                    });
+                    ffmpegExtractAudio.on('error', (code, signal) => {
+                        reject(code);
+                    });
+                }
+                else {
+                    extract(sourcePath);
+                }
             });
         });
     }
@@ -142,5 +165,23 @@ class AudioPeaks {
         });
     }
 }
-exports.AudioPeaks = AudioPeaks;
+function getPeaks(sourcePath, outputPath, probe) {
+    return __awaiter(this, void 0, void 0, function* () {
+        let ff;
+        try {
+            if (probe) {
+                ff = new AudioPeaks(probe);
+            }
+            else {
+                ff = new AudioPeaks();
+                yield ff.initializeByFile(sourcePath);
+            }
+            return yield ff.getPeaks(sourcePath, outputPath);
+        }
+        catch (err) {
+            throw err;
+        }
+    });
+}
+exports.getPeaks = getPeaks;
 //# sourceMappingURL=index.js.map
