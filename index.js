@@ -47,7 +47,7 @@ class AudioPeaks {
             }
         });
     }
-    getPeaks(sourcePath, outputPath) {
+    getPeaks(sourcePath, outputFile) {
         return new Promise((resolve, reject) => {
             const that = this;
             if (typeof sourcePath !== 'string')
@@ -64,7 +64,7 @@ class AudioPeaks {
                     that.extractPeaks((err, peaks) => {
                         if (err)
                             return reject(err);
-                        if (!outputPath) {
+                        if (!outputFile) {
                             if (!removeSource)
                                 return resolve(peaks);
                             fs.unlink(p, (err2) => {
@@ -81,7 +81,7 @@ class AudioPeaks {
                             catch (err) {
                                 return reject(err);
                             }
-                            fs.writeFile(outputPath, jsonPeaks, (err) => {
+                            fs.writeFile(outputFile, jsonPeaks, (err) => {
                                 if (!removeSource)
                                     return resolve(peaks);
                                 fs.unlink(p, (err2) => {
@@ -178,18 +178,20 @@ class AudioPeaks {
         });
     }
 }
-function getPeaks(sourcePath, outputPath, probe) {
+function getPeaks(sourcePath, opts) {
     return __awaiter(this, void 0, void 0, function* () {
+        if (!sourcePath)
+            throw new Error('no sourcePath specified');
         let ff;
         try {
-            if (probe) {
-                ff = new AudioPeaks(probe);
+            if (opts && opts.probe) {
+                ff = new AudioPeaks(opts.probe);
             }
             else {
                 ff = new AudioPeaks();
                 yield ff.initializeByFile(sourcePath);
             }
-            const thePeaks = yield ff.getPeaks(sourcePath, outputPath);
+            const thePeaks = yield ff.getPeaks(sourcePath, (opts && opts.outputFile) ? opts.outputFile : null);
             return thePeaks;
         }
         catch (err) {

@@ -27,7 +27,7 @@ describe('testing peaks', () => {
     }));
     it('testing peaks on audio file and save it as json', () => __awaiter(this, void 0, void 0, function* () {
         try {
-            const peaks = yield index_1.getPeaks(audioFile, outputOfPeaks1);
+            const peaks = yield index_1.getPeaks(audioFile, { outputFile: outputOfPeaks1 });
             const existsJsonFile = yield fs.pathExists(outputOfPeaks1);
             chai_1.expect(peaks).to.be.an('Array');
             chai_1.expect(existsJsonFile).to.be.eq(true);
@@ -47,7 +47,7 @@ describe('testing peaks', () => {
     }));
     it('testing peaks on video file and save it as json', () => __awaiter(this, void 0, void 0, function* () {
         try {
-            const peaks = yield index_1.getPeaks(videoFile, outputOfPeaks2);
+            const peaks = yield index_1.getPeaks(videoFile, { outputFile: outputOfPeaks2 });
             const existsJsonFile = yield fs.pathExists(outputOfPeaks2);
             chai_1.expect(peaks).to.be.an('Array');
             chai_1.expect(existsJsonFile).to.be.eq(true);

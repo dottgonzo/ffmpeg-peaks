@@ -23,7 +23,7 @@ describe('testing peaks', () => {
   })
   it('testing peaks on audio file and save it as json', async () => {
     try {
-      const peaks = await getPeaks(audioFile, outputOfPeaks1)
+      const peaks = await getPeaks(audioFile, {outputFile: outputOfPeaks1})
       const existsJsonFile = await fs.pathExists(outputOfPeaks1)
       expect(peaks).to.be.an('Array')
       expect(existsJsonFile).to.be.eq(true)
@@ -44,7 +44,7 @@ describe('testing peaks', () => {
   })
   it('testing peaks on video file and save it as json', async () => {
     try {
-      const peaks = await getPeaks(videoFile, outputOfPeaks2)
+      const peaks = await getPeaks(videoFile, {outputFile: outputOfPeaks2})
       const existsJsonFile = await fs.pathExists(outputOfPeaks2)
       expect(peaks).to.be.an('Array')
       expect(existsJsonFile).to.be.eq(true)
