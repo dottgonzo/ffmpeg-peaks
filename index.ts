@@ -21,7 +21,7 @@ class AudioPeaks {
   }
   sourceFilePath: string
   peaks: GetPeaks
-  
+
   constructor(probe?: promiseProbe.IFfprobe) {
     if (probe) {
       this.initWithProbe(probe)
@@ -44,6 +44,7 @@ class AudioPeaks {
   async initializeByFile(sourcePath: string) {
     try {
       const probe = await promiseProbe.ffprobe(sourcePath)
+      if (!probe.audio) throw new Error('no audio for this file ' + sourcePath)
       this.initWithProbe(probe)
     } catch (err) {
       throw err
@@ -62,12 +63,11 @@ class AudioPeaks {
       const that = this
       if (typeof sourcePath !== 'string') return reject(new Error('sourcePath param is not valid'))
 
-      const dateNow = new Date()
+      const dateNow = Date.now()
       const oggFile = '/tmp/ff_' + dateNow + '.ogg'
 
       fs.access(sourcePath, (err) => {
         if (err) return reject(new Error(`File ${sourcePath} not found`))
-
 
         if (!that.probe.audio) return resolve([])
 
@@ -94,7 +94,7 @@ class AudioPeaks {
 
         if (that.probe.format.format_name !== 'ogg') {
 
-          const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+          const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', '-f', 'ogg', oggFile], {
             stdio: 'ignore',
             shell: true
           })
@@ -108,8 +108,6 @@ class AudioPeaks {
         } else {
           extract(sourcePath)
         }
-
-
 
       })
     })
@@ -199,7 +197,8 @@ export async function getPeaks(sourcePath: string, outputPath: string, probe?: p
       ff = new AudioPeaks()
       await ff.initializeByFile(sourcePath)
     }
-    return await ff.getPeaks(sourcePath, outputPath)
+    const thePeaks = await ff.getPeaks(sourcePath, outputPath)
+    return thePeaks
   } catch (err) {
     throw err
   }

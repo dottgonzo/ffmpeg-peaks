@@ -38,6 +38,8 @@ class AudioPeaks {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const probe = yield promiseProbe.ffprobe(sourcePath);
+                if (!probe.audio)
+                    throw new Error('no audio for this file ' + sourcePath);
                 this.initWithProbe(probe);
             }
             catch (err) {
@@ -50,7 +52,7 @@ class AudioPeaks {
             const that = this;
             if (typeof sourcePath !== 'string')
                 return reject(new Error('sourcePath param is not valid'));
-            const dateNow = new Date();
+            const dateNow = Date.now();
             const oggFile = '/tmp/ff_' + dateNow + '.ogg';
             fs.access(sourcePath, (err) => {
                 if (err)
@@ -81,7 +83,7 @@ class AudioPeaks {
                     });
                 }
                 if (that.probe.format.format_name !== 'ogg') {
-                    const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', oggFile], {
+                    const ffmpegExtractAudio = child_process_1.spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', '-f', 'ogg', oggFile], {
                         stdio: 'ignore',
                         shell: true
                     });
@@ -176,7 +178,8 @@ function getPeaks(sourcePath, outputPath, probe) {
                 ff = new AudioPeaks();
                 yield ff.initializeByFile(sourcePath);
             }
-            return yield ff.getPeaks(sourcePath, outputPath);
+            const thePeaks = yield ff.getPeaks(sourcePath, outputPath);
+            return thePeaks;
         }
         catch (err) {
             throw err;
