@@ -59,27 +59,38 @@ class AudioPeaks {
                     return reject(new Error(`File ${sourcePath} not found`));
                 if (!that.probe.audio)
                     return resolve([]);
-                function extract(p) {
+                function extract(p, removeSource) {
                     that.sourceFilePath = p;
                     that.extractPeaks((err, peaks) => {
                         if (err)
                             return reject(err);
-                        if (!outputPath)
-                            return resolve(peaks);
-                        let jsonPeaks;
-                        try {
-                            jsonPeaks = JSON.stringify(peaks);
-                        }
-                        catch (err) {
-                            return reject(err);
-                        }
-                        fs.writeFile(outputPath, jsonPeaks, (err) => {
-                            fs.unlink(oggFile, (err2) => {
+                        if (!outputPath) {
+                            if (!removeSource)
+                                return resolve(peaks);
+                            fs.unlink(p, (err2) => {
                                 if (err)
                                     return reject(err);
                                 resolve(peaks);
                             });
-                        });
+                        }
+                        else {
+                            let jsonPeaks;
+                            try {
+                                jsonPeaks = JSON.stringify(peaks);
+                            }
+                            catch (err) {
+                                return reject(err);
+                            }
+                            fs.writeFile(outputPath, jsonPeaks, (err) => {
+                                if (!removeSource)
+                                    return resolve(peaks);
+                                fs.unlink(p, (err2) => {
+                                    if (err)
+                                        return reject(err);
+                                    resolve(peaks);
+                                });
+                            });
+                        }
                     });
                 }
                 if (that.probe.format.format_name !== 'ogg') {
@@ -90,7 +101,7 @@ class AudioPeaks {
                     ffmpegExtractAudio.on('exit', (code, signal) => {
                         if (code !== 0)
                             return reject('convert to ogg failed');
-                        extract(oggFile);
+                        extract(oggFile, true);
                     });
                     ffmpegExtractAudio.on('error', (code, signal) => {
                         reject(code);

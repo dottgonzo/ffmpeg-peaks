@@ -58,7 +58,7 @@ class AudioPeaks {
 	 * @param {String|Function} outputPath - Output audio file path or Callback fn.
 	 * @param {Function|Undefined} cb                - Callback fn
 	 */
-  getPeaks(sourcePath: string, outputPath: string) {
+  getPeaks(sourcePath: string, outputPath?: string) {
     return new Promise((resolve, reject) => {
       const that = this
       if (typeof sourcePath !== 'string') return reject(new Error('sourcePath param is not valid'))
@@ -71,24 +71,33 @@ class AudioPeaks {
 
         if (!that.probe.audio) return resolve([])
 
-        function extract(p: string) {
+        function extract(p: string, removeSource?: boolean) {
           that.sourceFilePath = p
           that.extractPeaks((err, peaks) => {
             if (err) return reject(err)
-            if (!outputPath) return resolve(peaks)
-            let jsonPeaks
-            try {
-              jsonPeaks = JSON.stringify(peaks)
-            } catch (err) {
-              return reject(err)
-            }
-            fs.writeFile(outputPath, jsonPeaks, (err) => {
-              fs.unlink(oggFile, (err2) => {
+            if (!outputPath) {
+              if (!removeSource) return resolve(peaks)
+              fs.unlink(p, (err2) => {
                 if (err) return reject(err)
                 resolve(peaks)
               })
+            } else {
+              let jsonPeaks
+              try {
+                jsonPeaks = JSON.stringify(peaks)
+              } catch (err) {
+                return reject(err)
+              }
+              fs.writeFile(outputPath, jsonPeaks, (err) => {
+                if (!removeSource) return resolve(peaks)
+                fs.unlink(p, (err2) => {
+                  if (err) return reject(err)
+                  resolve(peaks)
+                })
 
-            })
+              })
+            }
+
           })
         }
 
@@ -100,7 +109,7 @@ class AudioPeaks {
           })
           ffmpegExtractAudio.on('exit', (code, signal) => {
             if (code !== 0) return reject('convert to ogg failed')
-            extract(oggFile)
+            extract(oggFile, true)
           })
           ffmpegExtractAudio.on('error', (code, signal) => {
             reject(code)
@@ -188,7 +197,7 @@ class AudioPeaks {
   }
 }
 
-export async function getPeaks(sourcePath: string, outputPath: string, probe?: promiseProbe.IFfprobe) {
+export async function getPeaks(sourcePath: string, outputPath?: string, probe?: promiseProbe.IFfprobe) {
   let ff: AudioPeaks
   try {
     if (probe) {
