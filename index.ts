@@ -58,7 +58,7 @@ class AudioPeaks {
 	 * @param {String|Function} outputPath - Output audio file path or Callback fn.
 	 * @param {Function|Undefined} cb                - Callback fn
 	 */
-  getPeaks(sourcePath: string, outputFile?: string) {
+  getPeaks(sourcePath: string, outputFile?: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
       const that = this
       if (typeof sourcePath !== 'string') return reject(new Error('sourcePath param is not valid'))
@@ -197,7 +197,7 @@ class AudioPeaks {
   }
 }
 
-export async function getPeaks(sourcePath: string, opts?: { outputFile?: string, probe?: promiseProbe.IFfprobe }) {
+export async function getPeaks(sourcePath: string, opts?: { outputFile?: string, probe?: promiseProbe.IFfprobe }): Promise<string[]> {
   if (!sourcePath) throw new Error('no sourcePath specified')
   let ff: AudioPeaks
   try {
