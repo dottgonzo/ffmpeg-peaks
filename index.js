@@ -81,14 +81,33 @@ class AudioPeaks {
                             catch (err) {
                                 return reject(err);
                             }
-                            fs.writeFile(outputFile, jsonPeaks, (err) => {
-                                if (!removeSource)
-                                    return resolve(peaks);
-                                fs.unlink(p, (err2) => {
-                                    if (err)
-                                        return reject(err);
-                                    resolve(peaks);
-                                });
+                            fs.access(outputFile, (err) => {
+                                if (err) {
+                                    fs.writeFile(outputFile, jsonPeaks, (err) => {
+                                        if (err)
+                                            return reject(err);
+                                        fs.unlink(oggFile, (err2) => {
+                                            if (err)
+                                                return reject(err);
+                                            resolve(peaks);
+                                        });
+                                    });
+                                }
+                                else {
+                                    fs.unlink(outputFile, (err) => {
+                                        if (err)
+                                            return reject(err);
+                                        fs.writeFile(outputFile, jsonPeaks, (err) => {
+                                            if (err)
+                                                return reject(err);
+                                            fs.unlink(oggFile, (err2) => {
+                                                if (err)
+                                                    return reject(err);
+                                                resolve(peaks);
+                                            });
+                                        });
+                                    });
+                                }
                             });
                         }
                     });
