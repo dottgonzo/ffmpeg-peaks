@@ -198,7 +198,7 @@ class AudioPeaks {
             ffmpeg.stdout.on('end', () => cb(null, rawfilepath));
             ffmpeg.on('error', err => {
                 console.log('ffpeakserr', err);
-                cb(null, err);
+                cb(err);
             });
         });
     }

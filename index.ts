@@ -212,7 +212,7 @@ class AudioPeaks {
       ffmpeg.on('error', err => {
         console.log('ffpeakserr', err)
 
-        cb(null, err)
+        cb(err)
       })
     })
   }
