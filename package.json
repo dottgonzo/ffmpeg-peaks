@@ -1,6 +1,6 @@
 {
   "name": "ffmpeg-promise-peaks",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Extract peaks from an audio file.",
   "main": "index.js",
   "scripts": {
