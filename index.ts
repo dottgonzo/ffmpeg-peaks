@@ -52,12 +52,12 @@ class AudioPeaks {
   }
 
   /*
-	 * Extracts peaks from an audio file.
-	 * Writes a JSON file if an output path was specified.
-	 * @param {String} sourcePath          - Source audio file path.
-	 * @param {String|Function} outputPath - Output audio file path or Callback fn.
-	 * @param {Function|Undefined} cb                - Callback fn
-	 */
+   * Extracts peaks from an audio file.
+   * Writes a JSON file if an output path was specified.
+   * @param {String} sourcePath          - Source audio file path.
+   * @param {String|Function} outputPath - Output audio file path or Callback fn.
+   * @param {Function|Undefined} cb                - Callback fn
+   */
   getPeaks(sourcePath: string, outputFile?: string): Promise<string[]> {
     return new Promise((resolve, reject) => {
       const that = this
@@ -66,7 +66,7 @@ class AudioPeaks {
       const dateNow = Date.now()
       const oggFile = '/tmp/ff_' + dateNow + '.ogg'
 
-      fs.access(sourcePath, (err) => {
+      fs.access(sourcePath, err => {
         if (err) return reject(new Error(`File ${sourcePath} not found`))
 
         if (!that.probe.audio) return resolve([])
@@ -77,7 +77,7 @@ class AudioPeaks {
             if (err) return reject(err)
             if (!outputFile) {
               if (!removeSource) return resolve(peaks)
-              fs.unlink(p, (err2) => {
+              fs.unlink(p, err2 => {
                 if (err) return reject(err)
                 resolve(peaks)
               })
@@ -88,43 +88,41 @@ class AudioPeaks {
               } catch (err) {
                 return reject(err)
               }
-              fs.access(outputFile, (err) => {
+              fs.access(outputFile, err => {
                 if (err) {
-                  fs.writeFile(outputFile, jsonPeaks, (err) => {
+                  fs.writeFile(outputFile, jsonPeaks, err => {
                     if (err) return reject(err)
-                    fs.unlink(oggFile, (err2) => {
+                    fs.unlink(oggFile, err2 => {
                       if (err) return reject(err)
                       resolve(peaks)
                     })
-
                   })
                 } else {
-                  fs.unlink(outputFile, (err) => {
+                  fs.unlink(outputFile, err => {
                     if (err) return reject(err)
-                    fs.writeFile(outputFile, jsonPeaks, (err) => {
+                    fs.writeFile(outputFile, jsonPeaks, err => {
                       if (err) return reject(err)
-                      fs.unlink(oggFile, (err2) => {
+                      fs.unlink(oggFile, err2 => {
                         if (err) return reject(err)
                         resolve(peaks)
                       })
-
                     })
                   })
-
                 }
-
               })
             }
-
           })
         }
 
         if (that.probe.format.format_name !== 'ogg') {
-
-          const ffmpegExtractAudio = spawn('ffmpeg', ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', '-f', 'ogg', oggFile], {
-            stdio: 'ignore',
-            shell: true
-          })
+          const ffmpegExtractAudio = spawn(
+            'ffmpeg',
+            ['-i', sourcePath, '-vn', '-acodec', 'libvorbis', '-y', '-f', 'ogg', oggFile],
+            {
+              stdio: 'ignore',
+              shell: true
+            }
+          )
           ffmpegExtractAudio.on('exit', (code, signal) => {
             if (code !== 0) return reject('convert to ogg failed')
             extract(oggFile, true)
@@ -135,16 +133,14 @@ class AudioPeaks {
         } else {
           extract(sourcePath)
         }
-
       })
     })
-
   }
 
   /*
-	 * Extracts data peaks from an audio file using ffmpeg.
-	 * @param {Function} cb Callback fn
-	 */
+   * Extracts data peaks from an audio file using ffmpeg.
+   * @param {Function} cb Callback fn
+   */
   extractPeaks(cb: (err: Error, result?: any) => void) {
     this.convertFile((err, rawfilepath) => {
       if (err) return cb(err)
@@ -152,14 +148,14 @@ class AudioPeaks {
       fs.stat(rawfilepath, (err, stats) => {
         if (err) return cb(err)
 
-        const totalSamples = ~~((stats.size / 2) / this.opts.numOfChannels)
+        const totalSamples = ~~(stats.size / 2 / this.opts.numOfChannels)
         this.peaks = new GetPeaks(this.opts.numOfChannels >= 2, this.opts.width, this.opts.precision, totalSamples)
 
         const readable = fs.createReadStream(rawfilepath)
         readable.on('data', this.onChunkRead.bind(this))
         readable.on('error', cb)
         readable.on('end', () => {
-          rimraf(path.dirname(rawfilepath), (err) => {
+          rimraf(path.dirname(rawfilepath), err => {
             if (err) return cb(err)
             cb(null, this.peaks.get())
           })
@@ -186,7 +182,7 @@ class AudioPeaks {
       samples[this.sc].push(value)
       this.sc = (this.sc + 1) % this.opts.numOfChannels
     }
-    this.oddByte = (i < chunk.length ? chunk.readUInt8(i, true) : null)
+    this.oddByte = i < chunk.length ? chunk.readUInt8(i, true) : null
     this.peaks.update(samples)
   }
 
@@ -194,28 +190,38 @@ class AudioPeaks {
     fs.mkdtemp('/tmp/ffpeaks-', (err, tmpPath) => {
       if (err) return cb(err)
 
-      let errorMsg = ''
       const rawfilepath = path.join(tmpPath, 'audio.raw')
       const ffmpeg = spawn('ffmpeg', [
-        '-v', 'error',
-        '-i', this.sourceFilePath,
-        '-f', 's16le',
-        '-ac', this.opts.numOfChannels.toString(),
-        '-acodec', 'pcm_s16le',
-        '-ar', this.opts.sampleRate.toString(),
-        '-y', rawfilepath
+        '-v',
+        'error',
+        '-i',
+        this.sourceFilePath,
+        '-f',
+        's16le',
+        '-ac',
+        this.opts.numOfChannels.toString(),
+        '-acodec',
+        'pcm_s16le',
+        '-ar',
+        this.opts.sampleRate.toString(),
+        '-y',
+        rawfilepath
       ])
 
       ffmpeg.stdout.on('end', () => cb(null, rawfilepath))
-      ffmpeg.stderr.on('data', (err) => errorMsg += err.toString())
-      ffmpeg.stderr.on('end', () => {
-        if (errorMsg) cb(new Error(errorMsg))
+      ffmpeg.on('error', err => {
+        console.log('ffpeakserr', err)
+
+        cb(null, err)
       })
     })
   }
 }
 
-export async function getPeaks(sourcePath: string, opts?: { outputFile?: string, probe?: promiseProbe.IFfprobe }): Promise<string[]> {
+export async function getPeaks(
+  sourcePath: string,
+  opts?: { outputFile?: string; probe?: promiseProbe.IFfprobe }
+): Promise<string[]> {
   if (!sourcePath) throw new Error('no sourcePath specified')
   let ff: AudioPeaks
   try {
@@ -225,7 +231,7 @@ export async function getPeaks(sourcePath: string, opts?: { outputFile?: string,
       ff = new AudioPeaks()
       await ff.initializeByFile(sourcePath)
     }
-    const thePeaks = await ff.getPeaks(sourcePath, (opts && opts.outputFile) ? opts.outputFile : null)
+    const thePeaks = await ff.getPeaks(sourcePath, opts && opts.outputFile ? opts.outputFile : null)
     return thePeaks
   } catch (err) {
     throw err
