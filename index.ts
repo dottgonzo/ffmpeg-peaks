@@ -153,10 +153,10 @@ class AudioPeaks {
 
         const readable = fs.createReadStream(rawfilepath)
         readable.on('data', this.onChunkRead.bind(this))
-        readable.on('error', cb)
+        readable.on('error', ()=>cb(null))
         readable.on('end', () => {
           rimraf(path.dirname(rawfilepath), err => {
-            if (err) return cb(err)
+            if (err) return cb(null)
             cb(null, this.peaks.get())
           })
         })
@@ -212,7 +212,7 @@ class AudioPeaks {
       ffmpeg.on('error', err => {
         console.log('ffpeakserr', err)
 
-        cb(err)
+        cb()
       })
     })
   }
